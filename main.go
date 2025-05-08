@@ -501,7 +501,7 @@ func obtenerCoordenadas() {
 	respuesta = strings.TrimSpace(respuesta)
 
 	if strings.ToLower(respuesta) == "s" || strings.ToLower(respuesta) == "si" {
-		generarMapaHTML(filename)
+		generarMapaHTML(filenameClean)
 	}
 
 	fmt.Println("\nPresiona Enter para volver al menú principal...")
