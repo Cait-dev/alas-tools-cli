@@ -72,12 +72,12 @@ jobs:
             
             ### macOS y Linux
             ```bash
-            curl -sSL https://raw.githubusercontent.com/cait-dev/alas-tools-cli/main/scripts/install.sh | bash
+            curl -sSL https://raw.githubusercontent.com/Cait-dev/alas-tools-cli/main/scripts/install.sh | bash
             ```
             
             ### Windows
             ```powershell
-            powershell -Command "iwr -useb https://raw.githubusercontent.com/cait-dev/alas-tools-cli/main/scripts/install.ps1 | iex"
+            powershell -Command "iwr -useb https://raw.githubusercontent.com/Cait-dev/alas-tools-cli/main/scripts/install.ps1 | iex"
             ```
             
             ## Verificación de integridad

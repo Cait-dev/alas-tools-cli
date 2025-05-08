@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"bufio"
 	"encoding/json"
 	"fmt"
@@ -8,10 +9,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
-	"sort"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -130,7 +131,7 @@ func mostrarPantallaInicio() {
 	reset := "\033[0m"
 	fmt.Println(verde + asciiArt + subtitulo + reset)
 
-	fmt.Println("\nBienvenido a Alas-Tools-Cli v1.0")
+	fmt.Println("\nBienvenido a Alas-Tools-Cli v1.1.1")
 	fmt.Println("─────────────────────────────")
 	fmt.Println("Use the arrow keys to navigate: ↑ ↓")
 	time.Sleep(2 * time.Second)
@@ -336,21 +337,6 @@ func obtenerCoordenadas() {
 
 	fmt.Printf("\nConsultando API para %d pallet(s): %s...\n", len(validPalletCodes), strings.Join(validPalletCodes, ", "))
 
-	palletCodesJSON, err := json.Marshal(validPalletCodes)
-	if err != nil {
-		fmt.Println(verde + "\n[ERROR]" + reset + " Error al procesar los códigos de pallet: " + err.Error())
-		fmt.Println("\nPresiona Enter para volver al menú principal...")
-		fmt.Scanln()
-		return
-	}
-
-	requestBody := fmt.Sprintf(`{
-		"end": {"lat":-33.6201922,"lon":-70.68730359999999},
-		"event_info": {"user_name":"%s"},
-		"pallet_codes": %s,
-		"start": {"lat":-33.304577,"lon":-70.728527}
-	}`, userName, string(palletCodesJSON))
-
 	apiUser := os.Getenv("ALAS_API_USER")
 	apiPassword := os.Getenv("ALAS_API_PASSWORD")
 
@@ -363,29 +349,120 @@ func obtenerCoordenadas() {
 		fmt.Println("Advertencia: ALAS_API_PASSWORD no está configurada, usando valor predeterminado para desarrollo")
 	}
 
-	client := &http.Client{}
-	req, err := http.NewRequest("POST", "https://api.alasxpress.com/delivery/delivery-orders/cl/_orders-inbox5", strings.NewReader(requestBody))
+	initialRequestBody := struct {
+		PalletCodes  []string `json:"pallet_codes"`
+		PageNumber   int      `json:"page_number"`
+		PageSize     int      `json:"page_size"`
+		SourceFields []string `json:"source_fields"`
+	}{
+		PalletCodes:  validPalletCodes,
+		PageNumber:   0,
+		PageSize:     1,
+		SourceFields: []string{"vehicle_location", "destination.geo_location"},
+	}
+
+	initialRequestJSON, err := json.Marshal(initialRequestBody)
 	if err != nil {
-		fmt.Println(verde + "\n[ERROR]" + reset + " Error al crear la petición: " + err.Error())
+		fmt.Println(verde + "\n[ERROR]" + reset + " Error al crear la petición inicial: " + err.Error())
 		fmt.Println("\nPresiona Enter para volver al menú principal...")
 		fmt.Scanln()
 		return
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(apiUser, apiPassword)
+	client := &http.Client{}
+	initialReq, err := http.NewRequest("POST", "https://api.alasxpress.com/delivery/delivery-orders/cl/_search", bytes.NewBuffer(initialRequestJSON))
+	if err != nil {
+		fmt.Println(verde + "\n[ERROR]" + reset + " Error al crear la petición inicial: " + err.Error())
+		fmt.Println("\nPresiona Enter para volver al menú principal...")
+		fmt.Scanln()
+		return
+	}
 
-	fmt.Println("Conectando a la API...")
-	resp, err := client.Do(req)
+	initialReq.Header.Set("Content-Type", "application/json")
+	initialReq.SetBasicAuth(apiUser, apiPassword)
+
+	fmt.Println("Obteniendo información de paginación...")
+	initialResp, err := client.Do(initialReq)
 	if err != nil {
 		fmt.Println(verde + "\n[ERROR]" + reset + " Error al conectar con la API: " + err.Error())
 		fmt.Println("\nPresiona Enter para volver al menú principal...")
 		fmt.Scanln()
 		return
 	}
-	defer resp.Body.Close()
+	defer initialResp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	var initialResponseData struct {
+		Total int `json:"total"`
+	}
+
+	initialBody, _ := ioutil.ReadAll(initialResp.Body)
+	if initialResp.StatusCode != 200 {
+		fmt.Printf("%s\n[ERROR]%s Código de estado: %d - %s\n", verde, reset, initialResp.StatusCode, string(initialBody))
+		fmt.Println("\nPresiona Enter para volver al menú principal...")
+		fmt.Scanln()
+		return
+	}
+
+	err = json.Unmarshal(initialBody, &initialResponseData)
+	if err != nil {
+		fmt.Println(verde + "\n[ERROR]" + reset + " Error al procesar la respuesta inicial: " + err.Error())
+		fmt.Println("\nPresiona Enter para volver al menú principal...")
+		fmt.Scanln()
+		return
+	}
+
+	totalItems := initialResponseData.Total
+	if totalItems == 0 {
+		fmt.Println(verde + "\n[AVISO]" + reset + " No se encontraron órdenes para los pallets proporcionados.")
+		fmt.Println("\nPresiona Enter para volver al menú principal...")
+		fmt.Scanln()
+		return
+	}
+
+	fmt.Printf("Se encontraron un total de %d órdenes. Obteniendo coordenadas...\n", totalItems)
+
+	mainRequestBody := struct {
+		PalletCodes  []string `json:"pallet_codes"`
+		PageNumber   int      `json:"page_number"`
+		PageSize     int      `json:"page_size"`
+		SourceFields []string `json:"source_fields"`
+	}{
+		PalletCodes:  validPalletCodes,
+		PageNumber:   0,
+		PageSize:     totalItems,
+		SourceFields: []string{"vehicle_location", "destination.geo_location"},
+	}
+
+	mainRequestJSON, err := json.Marshal(mainRequestBody)
+	if err != nil {
+		fmt.Println(verde + "\n[ERROR]" + reset + " Error al crear la petición principal: " + err.Error())
+		fmt.Println("\nPresiona Enter para volver al menú principal...")
+		fmt.Scanln()
+		return
+	}
+
+	mainReq, err := http.NewRequest("POST", "https://api.alasxpress.com/delivery/delivery-orders/cl/_search", bytes.NewBuffer(mainRequestJSON))
+	if err != nil {
+		fmt.Println(verde + "\n[ERROR]" + reset + " Error al crear la petición principal: " + err.Error())
+		fmt.Println("\nPresiona Enter para volver al menú principal...")
+		fmt.Scanln()
+		return
+	}
+
+	mainReq.Header.Set("Content-Type", "application/json")
+	mainReq.SetBasicAuth(apiUser, apiPassword)
+
+	fmt.Println("Obteniendo coordenadas detalladas...")
+	mainResp, err := client.Do(mainReq)
+	if err != nil {
+		fmt.Println(verde + "\n[ERROR]" + reset + " Error al conectar con la API: " + err.Error())
+		fmt.Println("\nPresiona Enter para volver al menú principal...")
+		fmt.Scanln()
+		return
+	}
+	defer mainResp.Body.Close()
+
+	mainBody, err := ioutil.ReadAll(mainResp.Body)
 	if err != nil {
 		fmt.Println(verde + "\n[ERROR]" + reset + " Error al leer la respuesta: " + err.Error())
 		fmt.Println("\nPresiona Enter para volver al menú principal...")
@@ -393,8 +470,8 @@ func obtenerCoordenadas() {
 		return
 	}
 
-	if resp.StatusCode != 200 {
-		fmt.Printf("%s\n[ERROR]%s Código de estado: %d - %s\n", verde, reset, resp.StatusCode, string(body))
+	if mainResp.StatusCode != 200 {
+		fmt.Printf("%s\n[ERROR]%s Código de estado: %d - %s\n", verde, reset, mainResp.StatusCode, string(mainBody))
 		fmt.Println("\nPresiona Enter para volver al menú principal...")
 		fmt.Scanln()
 		return
@@ -413,7 +490,7 @@ func obtenerCoordenadas() {
 		} `json:"items"`
 	}
 
-	err = json.Unmarshal(body, &responseData)
+	err = json.Unmarshal(mainBody, &responseData)
 	if err != nil {
 		fmt.Println(verde + "\n[ERROR]" + reset + " Error al procesar la respuesta: " + err.Error())
 		fmt.Println("\nPresiona Enter para volver al menú principal...")
@@ -422,19 +499,19 @@ func obtenerCoordenadas() {
 	}
 
 	type CoordInfo struct {
-		Lat	float64
-		Lon	float64
+		Lat            float64
+		Lon            float64
 		VehicleLocation int
-		Index int
+		Index          int
 	}
 
 	var coordInfos []CoordInfo
-	for i, item := range responseData.Items{
+	for i, item := range responseData.Items {
 		lat := item.Destination.GeoLocation.Lat
 		lon := item.Destination.GeoLocation.Lon
 		vehicleLoc := item.VehicleLocation
 
-		if lat != 0 && lon != 0{
+		if lat != 0 && lon != 0 {
 			coordInfos = append(coordInfos, CoordInfo{
 				Lat:            lat,
 				Lon:            lon,
@@ -456,9 +533,9 @@ func obtenerCoordenadas() {
 	})
 
 	var coordinates []string
-	for i, info := range coordInfos{
+	for i, info := range coordInfos {
 		coordinates = append(coordinates, fmt.Sprintf("(%.7f, %.7f) /* Orden #%d, Vehicle Location: %d */", 
-		info.Lat, info.Lon, i + 1, info.VehicleLocation))
+			info.Lat, info.Lon, i + 1, info.VehicleLocation))
 	}
 
 	var coordinatesClean []string
@@ -469,7 +546,6 @@ func obtenerCoordenadas() {
 	coordinatesStr := "[" + strings.Join(coordinates, ", ") + "]"
 	coordinatesCleanStr := "[" + strings.Join(coordinatesClean, ", ") + "]"
 
-
 	var filename string
 	if len(validPalletCodes) == 1 {
 		filename = fmt.Sprintf("coordenadas_%s.txt", validPalletCodes[0])
@@ -478,7 +554,6 @@ func obtenerCoordenadas() {
 	}
 
 	err = ioutil.WriteFile(filename, []byte(coordinatesStr), 0644)
-
 	if err != nil {
 		fmt.Println(verde + "\n[ERROR]" + reset + " Error al escribir el archivo: " + err.Error())
 		fmt.Println("\nPresiona Enter para volver al menú principal...")
@@ -490,11 +565,11 @@ func obtenerCoordenadas() {
 	err = ioutil.WriteFile(filenameClean, []byte(coordinatesCleanStr), 0644)
 	if err != nil {
 		fmt.Println(verde + "\n[AVISO]" + reset + " Error al escribir el archivo limpio: " + err.Error())
-	
 	}
 
-	fmt.Printf("\n%s[ÉXITO]%s Se encontraron %d coordenadas.\n", verde, reset, len(coordinates))
+	fmt.Printf("\n%s[ÉXITO]%s Se encontraron %d coordenadas ordenadas por Vehicle Location.\n", verde, reset, len(coordinates))
 	fmt.Printf("Se ha creado el archivo %s con las coordenadas en el formato solicitado.\n", filename)
+	fmt.Printf("También se creó %s con un formato compatible para otras herramientas.\n", filenameClean)
 
 	fmt.Print("\n¿Desea generar un mapa HTML con estas coordenadas? (s/n): ")
 	respuesta, _ := reader.ReadString('\n')
