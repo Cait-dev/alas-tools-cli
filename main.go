@@ -408,6 +408,7 @@ func obtenerCoordenadas() {
 					Lon float64 `json:"lon"`
 				} `json:"geo_location"`
 			} `json:"destination"`
+			VehicleLocation int `json:"vehicle_location"`
 		} `json:"items"`
 	}
 
@@ -419,23 +420,54 @@ func obtenerCoordenadas() {
 		return
 	}
 
-	var coordinates []string
-	for _, item := range responseData.Items {
+	type CoordInfo struct {
+		Lat	float64
+		Lon	float64
+		VehicleLocation int
+		Index int
+	}
+
+	var coordInfos []CoordInfo
+	for i, item := range responseData.Items{
 		lat := item.Destination.GeoLocation.Lat
 		lon := item.Destination.GeoLocation.Lon
-		if lat != 0 && lon != 0 {
-			coordinates = append(coordinates, fmt.Sprintf("(%.7f, %.7f)", lat, lon))
+		vehicleLoc := item.VehicleLocation
+
+		if lat != 0 && lon != 0{
+			coordInfos = append(coordInfos, CoordInfo{
+				Lat:            lat,
+				Lon:            lon,
+				VehicleLocation: vehicleLoc,
+				Index:          i,
+			})
 		}
 	}
 
-	if len(coordinates) == 0 {
+	if len(coordInfos) == 0 {
 		fmt.Println(verde + "\n[AVISO]" + reset + " No se encontraron coordenadas válidas para los pallets proporcionados.")
 		fmt.Println("\nPresiona Enter para volver al menú principal...")
 		fmt.Scanln()
 		return
 	}
 
+	sort.Slice(coordInfos, func(i, j int) bool {
+		return coordInfos[i].VehicleLocation < coordInfos[j].VehicleLocation
+	})
+
+	var coordinates []string
+	for i, info := range coordInfos{
+		coordinates = append(coordinates, fmt.Sprintf("(%.7f, %.7f) /* Orden #%d, Vehicle Location: %d */", 
+		info.Lat, info.Lon, i + 1, info.VehicleLocation))
+	}
+
+	var coordinatesClean []string
+	for _, info := range coordInfos {
+		coordinatesClean = append(coordinatesClean, fmt.Sprintf("(%.7f, %.7f)", info.Lat, info.Lon))
+	}
+
 	coordinatesStr := "[" + strings.Join(coordinates, ", ") + "]"
+	coordinatesCleanStr := "[" + strings.Join(coordinatesClean, ", ") + "]"
+
 
 	var filename string
 	if len(validPalletCodes) == 1 {
@@ -443,12 +475,21 @@ func obtenerCoordenadas() {
 	} else {
 		filename = fmt.Sprintf("coordenadas_multiple_%d_pallets.txt", len(validPalletCodes))
 	}
-	err = ioutil.WriteFile(filename, []byte(coordinatesStr), 0644)
+	
+	err = ioutil.WriteFile(filenameClean, []byte(coordinatesStr), 0644)
+
 	if err != nil {
 		fmt.Println(verde + "\n[ERROR]" + reset + " Error al escribir el archivo: " + err.Error())
 		fmt.Println("\nPresiona Enter para volver al menú principal...")
 		fmt.Scanln()
 		return
+	}
+
+	filenameClean := strings.TrimSuffix(filename, ".txt") + "_clean.txt"
+	err = ioutil.WriteFile(filenameClean, []byte(coordinatesCleanStr), 0644)
+	if err != nil {
+		fmt.Println(verde + "\n[AVISO]" + reset + " Error al escribir el archivo limpio: " + err.Error())
+	
 	}
 
 	fmt.Printf("\n%s[ÉXITO]%s Se encontraron %d coordenadas.\n", verde, reset, len(coordinates))
