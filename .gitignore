@@ -1,0 +1,37 @@
+# Binarios compilados
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+alas-tools-cli
+alas-tools-cli-*
+
+# Archivos de prueba
+*.test
+*.tmp
+
+# Archivos de cobertura
+*.out
+
+# Directorios específicos de Go
+/vendor/
+/go.work
+
+# Archivos con credenciales
+.env
+config.json
+credentials.json
+secrets.yaml
+*.key
+*.pem
+
+# Archivos específicos del sistema
+.DS_Store
+Thumbs.db
+
+# Directorios de IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
