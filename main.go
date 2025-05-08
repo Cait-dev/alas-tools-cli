@@ -363,7 +363,7 @@ func obtenerCoordenadas() {
 	}
 
 	client := &http.Client{}
-	req, err := http.NewRequest("POST", "https://qa.api.alasxpress.com/delivery/delivery-orders/cl/_orders-inbox5", strings.NewReader(requestBody))
+	req, err := http.NewRequest("POST", "https://api.alasxpress.com/delivery/delivery-orders/cl/_orders-inbox5", strings.NewReader(requestBody))
 	if err != nil {
 		fmt.Println(verde + "\n[ERROR]" + reset + " Error al crear la petición: " + err.Error())
 		fmt.Println("\nPresiona Enter para volver al menú principal...")
