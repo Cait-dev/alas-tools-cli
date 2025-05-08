@@ -298,13 +298,25 @@ func obtenerCoordenadas() {
 
 	fmt.Println("\n" + titulo)
 	fmt.Println("\nEsta herramienta extrae coordenadas de las órdenes asociadas a un pallet.")
+
 	fmt.Print("\nIngrese el código de pallet (ej. pl202505danl001): ")
+	var palletInput string
+	fmt.Scanln(&palletInput)
 
-	var palletCode string
-	fmt.Scanln(&palletCode)
+	palletCodes := strings.Split(palletInput, ",")
+	for i, code := range palletCodes {
+		palletCodes[i] = strings.TrimSpace(code)
+	}
 
-	if palletCode == "" {
-		fmt.Println(verde + "\n[ERROR]" + reset + " El código de pallet no puede estar vacío.")
+	var validPalletCodes []string
+	for _, code := range palletCodes {
+		if code != "" {
+			validPalletCodes = append(validPalletCodes, code)
+		}
+	}
+
+	if len(validPalletCodes) == 0 {
+		fmt.Println(verde + "\n[ERROR]" + reset + " Debe ingresar al menos un código de pallet válido.")
 		fmt.Println("\nPresiona Enter para volver al menú principal...")
 		fmt.Scanln()
 		return
@@ -319,9 +331,22 @@ func obtenerCoordenadas() {
 		fmt.Println("Se usará el usuario predeterminado: " + userName)
 	}
 
-	fmt.Println("\nConsultando API para el pallet: " + palletCode + "...")
+	fmt.Printf("\nConsultando API para %d pallet(s): %s...\n", len(validPalletCodes), strings.Join(validPalletCodes, ", "))
 
-	requestBody := fmt.Sprintf(`{"end":{"lat":-33.6201922,"lon":-70.68730359999999},"event_info":{"user_name":"%s"},"pallet_codes": ["%s"], "start":{"lat":-33.304577,"lon":-70.728527}}`, userName, palletCode)
+	palletCodesJSON, err := json.Marshal(validPalletCodes)
+	if err != nil {
+		fmt.Println(verde + "\n[ERROR]" + reset + " Error al procesar los códigos de pallet: " + err.Error())
+		fmt.Println("\nPresiona Enter para volver al menú principal...")
+		fmt.Scanln()
+		return
+	}
+
+	requestBody := fmt.Sprintf(`{
+		"end": {"lat":-33.6201922,"lon":-70.68730359999999},
+		"event_info": {"user_name":"%s"},
+		"pallet_codes": %s,
+		"start": {"lat":-33.304577,"lon":-70.728527}
+	}`, userName, string(palletCodesJSON))
 
 	apiUser := os.Getenv("ALAS_API_USER")
 	apiPassword := os.Getenv("ALAS_API_PASSWORD")
@@ -410,7 +435,12 @@ func obtenerCoordenadas() {
 
 	coordinatesStr := "[" + strings.Join(coordinates, ", ") + "]"
 
-	filename := fmt.Sprintf("coordenadas_%s.txt", palletCode)
+	var filename string
+	if len(validPalletCodes) == 1 {
+		filename = fmt.Sprintf("coordenadas_%s.txt", validPalletCodes[0])
+	} else {
+		filename = fmt.Sprintf("coordenadas_multiple_%d_pallets.txt", len(validPalletCodes))
+	}
 	err = ioutil.WriteFile(filename, []byte(coordinatesStr), 0644)
 	if err != nil {
 		fmt.Println(verde + "\n[ERROR]" + reset + " Error al escribir el archivo: " + err.Error())
