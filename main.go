@@ -299,9 +299,11 @@ func obtenerCoordenadas() {
 	fmt.Println("\n" + titulo)
 	fmt.Println("\nEsta herramienta extrae coordenadas de las órdenes asociadas a un pallet.")
 
-	fmt.Print("\nIngrese el código de pallet (ej. pl202505danl001): ")
-	var palletInput string
-	fmt.Scanln(&palletInput)
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Print("\nIngrese el código de pallet (ej. pl202505danl001) o varios separados por comas: ")
+	palletInput, _ := reader.ReadString('\n')
+	palletInput = strings.TrimSpace(palletInput)
 
 	palletCodes := strings.Split(palletInput, ",")
 	for i, code := range palletCodes {
@@ -323,8 +325,8 @@ func obtenerCoordenadas() {
 	}
 
 	fmt.Print("\nIngrese el nombre de usuario: ")
-	var userName string
-	fmt.Scanln(&userName)
+	userName, _ := reader.ReadString('\n')
+	userName = strings.TrimSpace(userName)
 
 	if userName == "" {
 		userName = "raul.sepulveda"
@@ -427,7 +429,7 @@ func obtenerCoordenadas() {
 	}
 
 	if len(coordinates) == 0 {
-		fmt.Println(verde + "\n[AVISO]" + reset + " No se encontraron coordenadas válidas para el pallet proporcionado.")
+		fmt.Println(verde + "\n[AVISO]" + reset + " No se encontraron coordenadas válidas para los pallets proporcionados.")
 		fmt.Println("\nPresiona Enter para volver al menú principal...")
 		fmt.Scanln()
 		return
@@ -453,8 +455,8 @@ func obtenerCoordenadas() {
 	fmt.Printf("Se ha creado el archivo %s con las coordenadas en el formato solicitado.\n", filename)
 
 	fmt.Print("\n¿Desea generar un mapa HTML con estas coordenadas? (s/n): ")
-	var respuesta string
-	fmt.Scanln(&respuesta)
+	respuesta, _ := reader.ReadString('\n')
+	respuesta = strings.TrimSpace(respuesta)
 
 	if strings.ToLower(respuesta) == "s" || strings.ToLower(respuesta) == "si" {
 		generarMapaHTML(filename)
