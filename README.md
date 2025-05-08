@@ -25,6 +25,47 @@ Descarga el instalador desde la [página de releases](https://github.com/Cait-de
 ```powershell
 powershell -Command "iwr -useb https://raw.githubusercontent.com/Cait-dev/alas-tools-cli/main/scripts/install.ps1 | iex"
 ```
+## Configuración
+
+### Credenciales de API
+
+Esta aplicación requiere credenciales para acceder a la API de Alas Express. Por razones de seguridad, estas credenciales no están incluidas en el código fuente y deben configurarse como variables de entorno.
+
+#### Opción 1: Variables de entorno
+
+Configura las siguientes variables de entorno en tu sistema:
+
+```bash
+# En Linux/macOS
+export ALAS_API_USER="tu_usuario"
+export ALAS_API_PASSWORD="tu_contraseña"
+
+# En Windows (PowerShell)
+$env:ALAS_API_USER="tu_usuario"
+$env:ALAS_API_PASSWORD="tu_contraseña"
+
+# En Windows (CMD)
+set ALAS_API_USER=tu_usuario
+set ALAS_API_PASSWORD=tu_contraseña
+```
+
+#### Opción 2: Archivo .env (para desarrollo)
+
+1. Copia el archivo `.env.example` a `.env`:
+   ```
+   cp .env.example .env
+   ```
+
+2. Edita el archivo `.env` y añade tus credenciales reales:
+   ```
+   ALAS_API_USER=tu_usuario
+   ALAS_API_PASSWORD=tu_contraseña
+   ```
+
+3. La aplicación cargará automáticamente estas variables desde el archivo `.env` si está presente.
+
+> ⚠️ **IMPORTANTE**: Nunca compartas tus credenciales ni subas el archivo `.env` a GitHub u otros repositorios públicos.
+
 
 ## Contribución
 
