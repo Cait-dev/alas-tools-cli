@@ -475,8 +475,8 @@ func obtenerCoordenadas() {
 	} else {
 		filename = fmt.Sprintf("coordenadas_multiple_%d_pallets.txt", len(validPalletCodes))
 	}
-	
-	err = ioutil.WriteFile(filenameClean, []byte(coordinatesStr), 0644)
+
+	err = ioutil.WriteFile(filename, []byte(coordinatesStr), 0644)
 
 	if err != nil {
 		fmt.Println(verde + "\n[ERROR]" + reset + " Error al escribir el archivo: " + err.Error())
