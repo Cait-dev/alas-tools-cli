@@ -1,6 +1,6 @@
 module alas-tools-cli
 
-go 1.24.2
+go 1.24
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
