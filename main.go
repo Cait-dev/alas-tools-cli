@@ -310,9 +310,18 @@ func obtenerCoordenadas() {
 		return
 	}
 
+	fmt.Print("\nIngrese el nombre de usuario: ")
+	var userName string
+	fmt.Scanln(&userName)
+
+	if userName == "" {
+		userName = "raul.sepulveda"
+		fmt.Println("Se usará el usuario predeterminado: " + userName)
+	}
+
 	fmt.Println("\nConsultando API para el pallet: " + palletCode + "...")
 
-	requestBody := fmt.Sprintf(`{"end":{"lat":-33.6201922,"lon":-70.68730359999999},"event_info":{"user_name":"raul.sepulveda"},"pallet_codes": ["%s"], "start":{"lat":-33.304577,"lon":-70.728527}}`, palletCode)
+	requestBody := fmt.Sprintf(`{"end":{"lat":-33.6201922,"lon":-70.68730359999999},"event_info":{"user_name":"%s"},"pallet_codes": ["%s"], "start":{"lat":-33.304577,"lon":-70.728527}}`, userName, palletCode)
 
 	apiUser := os.Getenv("ALAS_API_USER")
 	apiPassword := os.Getenv("ALAS_API_PASSWORD")
