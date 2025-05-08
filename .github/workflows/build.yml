@@ -1,0 +1,85 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build binaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+          
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          
+      - name: Build for all platforms
+        run: |
+          mkdir -p bin
+          
+          # macOS (Intel)
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.VERSION }}" -o bin/alas-tools-cli-mac
+          
+          # macOS (Apple Silicon)
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.VERSION }}" -o bin/alas-tools-cli-mac-arm64
+          
+          # Windows 64-bit
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.VERSION }}" -o bin/alas-tools-cli.exe
+          
+          # Windows 32-bit
+          GOOS=windows GOARCH=386 go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.VERSION }}" -o bin/alas-tools-cli-386.exe
+          
+          # Linux 64-bit
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.VERSION }}" -o bin/alas-tools-cli-linux
+      
+      - name: Generate SHA-256 checksums
+        run: |
+          cd bin
+          sha256sum * > checksums.txt
+          cat checksums.txt
+      
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            bin/alas-tools-cli-mac
+            bin/alas-tools-cli-mac-arm64
+            bin/alas-tools-cli.exe
+            bin/alas-tools-cli-386.exe
+            bin/alas-tools-cli-linux
+            bin/checksums.txt
+          draft: false
+          prerelease: false
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            Alas-Tools-Cli ${{ steps.get_version.outputs.VERSION }}
+            
+            ## Instalación
+            
+            ### macOS y Linux
+            ```bash
+            curl -sSL https://raw.githubusercontent.com/cait-dev/alas-tools-cli/main/scripts/install.sh | bash
+            ```
+            
+            ### Windows
+            ```powershell
+            powershell -Command "iwr -useb https://raw.githubusercontent.com/cait-dev/alas-tools-cli/main/scripts/install.ps1 | iex"
+            ```
+            
+            ## Verificación de integridad
+            Puedes verificar la integridad de los binarios con:
+            ```bash
+            sha256sum -c checksums.txt
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -51,6 +51,10 @@ func loadEnv() {
 }
 
 var (
+	version = "dev"
+)
+
+var (
 	titleStyle        = lipgloss.NewStyle().MarginLeft(2).Foreground(lipgloss.Color("#00FF00")).Bold(true)
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4).Foreground(lipgloss.Color("#FFFFFF"))
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("#00FF00")).Bold(true)
@@ -177,6 +181,12 @@ func (m model) View() string {
 }
 
 func main() {
+
+	if len(os.Args) > 1 && (os.Args[1] == "-v" || os.Args[1] == "--version") {
+		fmt.Printf("Alas-Tools-Cli versión %s\n", version)
+		return
+	}
+
 	mostrarPantallaInicio()
 
 	salir := false
@@ -288,9 +298,8 @@ func obtenerCoordenadas() {
 
 	fmt.Println("\n" + titulo)
 	fmt.Println("\nEsta herramienta extrae coordenadas de las órdenes asociadas a un pallet.")
-
-	// Solicitar el código de pallet al usuario
 	fmt.Print("\nIngrese el código de pallet (ej. pl202505danl001): ")
+
 	var palletCode string
 	fmt.Scanln(&palletCode)
 
@@ -303,7 +312,6 @@ func obtenerCoordenadas() {
 
 	fmt.Println("\nConsultando API para el pallet: " + palletCode + "...")
 
-	// Construir el body para la petición
 	requestBody := fmt.Sprintf(`{"end":{"lat":-33.6201922,"lon":-70.68730359999999},"event_info":{"user_name":"raul.sepulveda"},"pallet_codes": ["%s"], "start":{"lat":-33.304577,"lon":-70.728527}}`, palletCode)
 
 	apiUser := os.Getenv("ALAS_API_USER")
@@ -318,7 +326,6 @@ func obtenerCoordenadas() {
 		fmt.Println("Advertencia: ALAS_API_PASSWORD no está configurada, usando valor predeterminado para desarrollo")
 	}
 
-	// Configurar la petición HTTP
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", "https://qa.api.alasxpress.com/delivery/delivery-orders/cl/_orders-inbox5", strings.NewReader(requestBody))
 	if err != nil {
@@ -328,11 +335,9 @@ func obtenerCoordenadas() {
 		return
 	}
 
-	// Agregar headers necesarios
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(apiUser, apiPassword)
 
-	// Realizar la petición
 	fmt.Println("Conectando a la API...")
 	resp, err := client.Do(req)
 	if err != nil {
@@ -343,7 +348,6 @@ func obtenerCoordenadas() {
 	}
 	defer resp.Body.Close()
 
-	// Leer la respuesta
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println(verde + "\n[ERROR]" + reset + " Error al leer la respuesta: " + err.Error())
@@ -352,7 +356,6 @@ func obtenerCoordenadas() {
 		return
 	}
 
-	// Verificar código de estado
 	if resp.StatusCode != 200 {
 		fmt.Printf("%s\n[ERROR]%s Código de estado: %d - %s\n", verde, reset, resp.StatusCode, string(body))
 		fmt.Println("\nPresiona Enter para volver al menú principal...")
@@ -360,7 +363,6 @@ func obtenerCoordenadas() {
 		return
 	}
 
-	// Parsear la respuesta JSON
 	var responseData struct {
 		Total int `json:"total"`
 		Items []struct {
@@ -381,17 +383,15 @@ func obtenerCoordenadas() {
 		return
 	}
 
-	// Extraer las coordenadas
 	var coordinates []string
 	for _, item := range responseData.Items {
 		lat := item.Destination.GeoLocation.Lat
 		lon := item.Destination.GeoLocation.Lon
-		if lat != 0 && lon != 0 { // Solo considerar coordenadas válidas
+		if lat != 0 && lon != 0 {
 			coordinates = append(coordinates, fmt.Sprintf("(%.7f, %.7f)", lat, lon))
 		}
 	}
 
-	// Verificar si se encontraron coordenadas
 	if len(coordinates) == 0 {
 		fmt.Println(verde + "\n[AVISO]" + reset + " No se encontraron coordenadas válidas para el pallet proporcionado.")
 		fmt.Println("\nPresiona Enter para volver al menú principal...")
@@ -399,10 +399,8 @@ func obtenerCoordenadas() {
 		return
 	}
 
-	// Generar el formato final
 	coordinatesStr := "[" + strings.Join(coordinates, ", ") + "]"
 
-	// Escribir el archivo de texto
 	filename := fmt.Sprintf("coordenadas_%s.txt", palletCode)
 	err = ioutil.WriteFile(filename, []byte(coordinatesStr), 0644)
 	if err != nil {
@@ -437,7 +435,6 @@ func generarMapaHTML(coordenadasTXT string) {
 	fmt.Println("\n" + titulo)
 	fmt.Println("\nEsta herramienta genera un mapa HTML interactivo a partir de un archivo de coordenadas.")
 
-	// Si no se proporcionó un archivo, pedirlo al usuario
 	if coordenadasTXT == "" {
 		fmt.Print("\nIngrese la ruta del archivo de coordenadas (ej. coordenadas_pl202505danl001.txt): ")
 		fmt.Scanln(&coordenadasTXT)
@@ -450,7 +447,6 @@ func generarMapaHTML(coordenadasTXT string) {
 		return
 	}
 
-	// Verificar que el archivo existe
 	if _, err := os.Stat(coordenadasTXT); os.IsNotExist(err) {
 		fmt.Println(verde + "\n[ERROR]" + reset + " El archivo especificado no existe: " + coordenadasTXT)
 		fmt.Println("\nPresiona Enter para volver al menú principal...")
@@ -458,7 +454,6 @@ func generarMapaHTML(coordenadasTXT string) {
 		return
 	}
 
-	// Leer el archivo de coordenadas
 	contenido, err := ioutil.ReadFile(coordenadasTXT)
 	if err != nil {
 		fmt.Println(verde + "\n[ERROR]" + reset + " Error al leer el archivo: " + err.Error())
@@ -467,23 +462,18 @@ func generarMapaHTML(coordenadasTXT string) {
 		return
 	}
 
-	// Parsear las coordenadas
 	coordStr := string(contenido)
 	coordStr = strings.TrimSpace(coordStr)
 
-	// Eliminar corchetes exteriores
 	coordStr = strings.TrimPrefix(coordStr, "[")
 	coordStr = strings.TrimSuffix(coordStr, "]")
 
-	// Dividir por comas y espacio
 	paresCoordenadas := strings.Split(coordStr, "), (")
 
-	// Limpiar paréntesis restantes
 	for i := range paresCoordenadas {
 		paresCoordenadas[i] = strings.Trim(paresCoordenadas[i], "()")
 	}
 
-	// Crear un slice para almacenar las coordenadas procesadas
 	type Coordenada struct {
 		Lat   float64
 		Lon   float64
@@ -491,7 +481,6 @@ func generarMapaHTML(coordenadasTXT string) {
 	}
 	var coordenadas []Coordenada
 
-	// Procesar cada par de coordenadas
 	for i, par := range paresCoordenadas {
 		partes := strings.Split(par, ", ")
 		if len(partes) != 2 {
@@ -519,7 +508,6 @@ func generarMapaHTML(coordenadasTXT string) {
 		return
 	}
 
-	// Calcular el centro del mapa basado en el promedio de coordenadas
 	var sumLat, sumLon float64
 	for _, coord := range coordenadas {
 		sumLat += coord.Lat
@@ -528,7 +516,6 @@ func generarMapaHTML(coordenadasTXT string) {
 	centroLat := sumLat / float64(len(coordenadas))
 	centroLon := sumLon / float64(len(coordenadas))
 
-	// Plantilla HTML para el mapa interactivo
 	htmlTemplate := `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -663,7 +650,6 @@ func generarMapaHTML(coordenadasTXT string) {
 </body>
 </html>`
 
-	// Crear un template de Go con la plantilla HTML
 	tmpl, err := template.New("mapa").Parse(htmlTemplate)
 	if err != nil {
 		fmt.Println(verde + "\n[ERROR]" + reset + " Error al procesar la plantilla: " + err.Error())
@@ -672,7 +658,6 @@ func generarMapaHTML(coordenadasTXT string) {
 		return
 	}
 
-	// Datos para el template
 	datos := struct {
 		Coordenadas []Coordenada
 		CentroLat   float64
@@ -683,11 +668,9 @@ func generarMapaHTML(coordenadasTXT string) {
 		CentroLon:   centroLon,
 	}
 
-	// Generar el nombre del archivo HTML de salida
 	nombreBase := strings.TrimSuffix(coordenadasTXT, ".txt")
 	nombreHTML := nombreBase + ".html"
 
-	// Crear el archivo HTML
 	archivoHTML, err := os.Create(nombreHTML)
 	if err != nil {
 		fmt.Println(verde + "\n[ERROR]" + reset + " Error al crear el archivo HTML: " + err.Error())
@@ -697,7 +680,6 @@ func generarMapaHTML(coordenadasTXT string) {
 	}
 	defer archivoHTML.Close()
 
-	// Ejecutar el template y escribir en el archivo
 	err = tmpl.Execute(archivoHTML, datos)
 	if err != nil {
 		fmt.Println(verde + "\n[ERROR]" + reset + " Error al generar el HTML: " + err.Error())
