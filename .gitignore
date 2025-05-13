@@ -4,8 +4,9 @@
 *.dll
 *.so
 *.dylib
-alas-tools-cli
-alas-tools-cli-*
+/alas-tools-cli
+!/cmd/alas-tools-cli/
+/cmd/alas-tools-cli/alas-cli
 
 # Archivos de prueba
 *.test
@@ -35,3 +36,8 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Ignorar archivos de coordenadas generados por la aplicación
+coordenadas_*.txt
+coordenadas_*_clean.txt
+*.html
