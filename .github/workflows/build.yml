@@ -31,19 +31,19 @@ jobs:
           mkdir -p bin
           
           # macOS (Intel)
-          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.VERSION }}" -o bin/alas-tools-cli-mac
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.VERSION }}" -o bin/alas-tools-cli-mac ./cmd/alas-tools-cli
           
           # macOS (Apple Silicon)
-          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.VERSION }}" -o bin/alas-tools-cli-mac-arm64
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.VERSION }}" -o bin/alas-tools-cli-mac-arm64 ./cmd/alas-tools-cli
           
           # Windows 64-bit
-          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.VERSION }}" -o bin/alas-tools-cli.exe
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.VERSION }}" -o bin/alas-tools-cli.exe ./cmd/alas-tools-cli
           
           # Windows 32-bit
-          GOOS=windows GOARCH=386 go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.VERSION }}" -o bin/alas-tools-cli-386.exe
+          GOOS=windows GOARCH=386 go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.VERSION }}" -o bin/alas-tools-cli-386.exe ./cmd/alas-tools-cli
           
           # Linux 64-bit
-          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.VERSION }}" -o bin/alas-tools-cli-linux
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.VERSION }}" -o bin/alas-tools-cli-linux ./cmd/alas-tools-cli
       
       - name: Generate SHA-256 checksums
         run: |
